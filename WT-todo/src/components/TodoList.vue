@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import TodoItem from './TodoItem.vue'
+import TodoItem from './ToDoItem.vue'
 
 interface Todo { id: number; title: string; done: boolean }
 
