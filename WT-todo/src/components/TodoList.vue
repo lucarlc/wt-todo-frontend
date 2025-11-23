@@ -1,18 +1,38 @@
 <template>
   <section>
     <h2>Meine Todos</h2>
-    <ul>
+
+    <p v-if="loading">Lade Todos...</p>
+    <p v-else-if="error">Fehler: {{ error }}</p>
+
+    <ul v-else>
       <TodoItem v-for="t in todos" :key="t.id" :todo="t" />
     </ul>
   </section>
 </template>
+
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import TodoItem from './TodoItem.vue'
-interface Todo { id:number; title:string; done:boolean }
-const todos = ref<Todo[]>([
-  { id:1, title:'Milestone 1 abschließen', done:false },
-  { id:2, title:'Repo-Link mailen',        done:false },
-  { id:3, title:'Demo vorbereiten',        done:true  },
-])
+
+interface Todo { id: number; title: string; done: boolean }
+
+const todos  = ref<Todo[]>([])
+const loading = ref(true)
+const error   = ref<string | null>(null)
+
+onMounted(async () => {
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/todos`)
+    if (!res.ok) {
+      throw new Error('Fehler beim Laden: ' + res.status)
+    }
+    todos.value = await res.json()
+  } catch (e: any) {
+    console.error(e)
+    error.value = e.message ?? 'Unbekannter Fehler'
+  } finally {
+    loading.value = false
+  }
+})
 </script>
