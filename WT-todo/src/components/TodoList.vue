@@ -1,116 +1,137 @@
 <template>
-  <section>
+  <section class="card">
     <h2>Meine Todos</h2>
 
-    <!-- Neues Todo anlegen -->
-    <form @submit.prevent="onAdd" class="todo-form">
-      <input
-        v-model="newTitle"
-        type="text"
-        placeholder="Neues Todo..."
-      />
-      <button
-        type="submit"
-        :disabled="newTitle.trim().length === 0 || saving || loading"
-      >
-        {{ saving ? 'Speichern…' : 'Hinzufügen' }}
-      </button>
+    <form class="row" @submit.prevent="onCreate">
+      <input v-model="newTitle" placeholder="Neues Todo" />
+      <button :disabled="newTitle.trim().length === 0">Hinzufügen</button>
     </form>
+
+    <div class="row tools">
+      <select v-model="filter">
+        <option value="all">Alle</option>
+        <option value="open">Offen</option>
+        <option value="done">Erledigt</option>
+      </select>
+
+      <input v-model="search" placeholder="Suche" />
+
+      <button class="danger" @click="onClearCompleted" :disabled="todos.filter(t => t.done).length === 0">
+        Erledigte löschen
+      </button>
+    </div>
 
     <p v-if="loading">Lade Todos...</p>
     <p v-else-if="error">Fehler: {{ error }}</p>
 
-    <ul v-else>
-      <TodoItem v-for="t in todos" :key="t.id" :todo="t" />
-      <li v-if="todos.length === 0">Noch keine Todos vorhanden.</li>
+    <ul v-else class="list">
+      <ToDoItem
+        v-for="t in visibleTodos"
+        :key="t.id"
+        :todo="t"
+        @toggle="onToggleDone"
+        @delete="onDelete"
+        @save="onSave"
+      />
     </ul>
   </section>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import TodoItem from './ToDoItem.vue'
+import { computed, onMounted, ref } from 'vue'
+import ToDoItem from './ToDoItem.vue'
+import { createTodo, deleteCompleted, deleteTodo, getTodos, setTodoDone, updateTodo, type Todo } from '../api/todoApi'
 
-interface Todo {
-  id: number
-  title: string
-  done: boolean
-}
-
-const todos   = ref<Todo[]>([])
+const todos = ref<Todo[]>([])
 const loading = ref(true)
-const error   = ref<string | null>(null)
+const error = ref<string | null>(null)
 
 const newTitle = ref('')
-const saving   = ref(false)
+const filter = ref<'all' | 'open' | 'done'>('all')
+const search = ref('')
 
-const API_BASE = import.meta.env.VITE_API_URL
+const visibleTodos = computed(() => {
+  const q = search.value.trim().toLowerCase()
 
-async function loadTodos() {
+  return todos.value.filter(t => {
+    if (filter.value === 'open' && t.done) return false
+    if (filter.value === 'done' && !t.done) return false
+    if (q && !t.title.toLowerCase().includes(q)) return false
+    return true
+  })
+})
+
+async function load() {
   loading.value = true
   error.value = null
   try {
-    const res = await fetch(`${API_BASE}/api/v1/todos`)
-    if (!res.ok) {
-      throw new Error('Fehler beim Laden: ' + res.status)
-    }
-    todos.value = await res.json()
+    todos.value = await getTodos()
   } catch (e: any) {
-    console.error(e)
     error.value = e.message ?? 'Unbekannter Fehler'
   } finally {
     loading.value = false
   }
 }
 
-async function onAdd() {
-  const title = newTitle.value.trim()
-  if (!title) {
-    return
-  }
+onMounted(load)
 
-  saving.value = true
-  error.value = null
+async function onCreate() {
+  const title = newTitle.value.trim()
+  if (!title) return
 
   try {
-    const res = await fetch(`${API_BASE}/api/v1/todos`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, done: false }),
-    })
-
-    if (!res.ok) {
-      throw new Error('Fehler beim Speichern: ' + res.status)
-    }
-
-    const created: Todo = await res.json()
-    todos.value.push(created)
+    const created = await createTodo(title)
+    todos.value = [...todos.value, created]
     newTitle.value = ''
   } catch (e: any) {
-    console.error(e)
-    error.value = e.message ?? 'Unbekannter Fehler'
-  } finally {
-    saving.value = false
+    error.value = e.message ?? 'Fehler beim Anlegen'
   }
 }
 
-onMounted(loadTodos)
+async function onToggleDone(todo: Todo) {
+  try {
+    const updated = await setTodoDone(todo.id, !todo.done)
+    todos.value = todos.value.map(t => (t.id === updated.id ? updated : t))
+  } catch (e: any) {
+    error.value = e.message ?? 'Fehler beim Aktualisieren'
+  }
+}
+
+async function onSave(todo: Todo, title: string) {
+  try {
+    const updated = await updateTodo(todo.id, { title, done: todo.done })
+    todos.value = todos.value.map(t => (t.id === updated.id ? updated : t))
+  } catch (e: any) {
+    error.value = e.message ?? 'Fehler beim Speichern'
+  }
+}
+
+async function onDelete(todo: Todo) {
+  try {
+    await deleteTodo(todo.id)
+    todos.value = todos.value.filter(t => t.id !== todo.id)
+  } catch (e: any) {
+    error.value = e.message ?? 'Fehler beim Löschen'
+  }
+}
+
+async function onClearCompleted() {
+  try {
+    await deleteCompleted()
+    todos.value = todos.value.filter(t => !t.done)
+  } catch (e: any) {
+    error.value = e.message ?? 'Fehler beim Löschen'
+  }
+}
 </script>
 
 <style scoped>
-.todo-form {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.todo-form input {
-  flex: 1;
-  padding: 0.35rem 0.5rem;
-}
-
-.todo-form button {
-  padding: 0.35rem 0.75rem;
-  cursor: pointer;
-}
+.card { border: 1px solid #ddd; border-radius: 12px; padding: 1rem; }
+.row { display:flex; gap:.5rem; margin:.75rem 0; }
+.tools { align-items:center; }
+.list { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:.5rem; }
+input, select { flex:1; padding:.5rem .6rem; border-radius:10px; border:1px solid #ccc; }
+button { padding:.5rem .8rem; border-radius:10px; border:1px solid #888; cursor:pointer; }
+button:disabled { opacity:.5; cursor:not-allowed; }
+.danger { border-color:#c33; }
 </style>
