@@ -1,54 +1,43 @@
-# WT-todo
+# WT-todo (Frontend)
 
-This template should help get you started developing with Vue 3 in Vite.
+Vue 3 + Vite Frontend fuer die WT-Todo App.
 
-## Recommended IDE Setup
-
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd) 
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
+## Setup
 ```sh
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+## Environment
 
+Die App erwartet eine API-Base-URL ueber:
+- `VITE_API_URL` (z.B. `http://localhost:8080` oder deine Render-Backend-URL)
+
+Beispiel `.env.local`:
+```env
+VITE_API_URL=http://localhost:8080
+```
+
+## Development
 ```sh
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
-
+## Build
 ```sh
 npm run build
 ```
 
-### Run Unit Tests with [Vitest](https://vitest.dev/)
+## Login / Register
+- `/login`
+- `/register`
 
-```sh
-npm run test:unit
-```
+Nach Login wird ein JWT im LocalStorage gespeichert und automatisch als `Authorization: Bearer <jwt>` an das Backend gesendet.
 
-### Lint with [ESLint](https://eslint.org/)
+## Continuous Deployment (Render Auto Deploy)
 
-```sh
-npm run lint
-```
+Damit CD erfuellt ist (jeder Push auf `main` deployed automatisch):
+1. Render Service oeffnen (**Frontend**)
+2. **Settings**
+3. **Deploys**
+4. **Auto Deploy**: **On**
+5. **Branch**: `main`
